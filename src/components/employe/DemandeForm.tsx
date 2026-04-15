@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useData } from "../../context/DataContext";
 import { useUser } from "../../context/UserContext";
 import { countWorkingDays } from "../../utils/dateUtils";
+import type { Categorie, Status } from "../../types";
 
 export default function DemandeForm() {
   const { addLeave } = useData();
@@ -26,11 +27,11 @@ export default function DemandeForm() {
  const newLeave = {
       id: Date.now(), 
       userId: currentUser.id,
-      type: categorie,
+     type: categorie as Categorie,
       startDate,
       endDate,
       reason,
-      status: "en attente",
+      status: "en attente" as Status,
       userName: currentUser.name,
       createdAt: new Date().toISOString()
     };
