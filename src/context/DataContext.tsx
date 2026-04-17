@@ -1,31 +1,78 @@
-import { createContext, useContext } from "react";
-
-import { useLocalStorage } from "../hooks/useLocalStorage";
-import type { Demande } from "../types";
+import { createContext, useContext, useEffect, useState } from "react";
+import { apiGet, apiPost, apiPatch } from "../utils/api";
+import { useUser } from "./UserContext";
+import type { Demande, Status } from "../types";
 
 type DataContextType = {
-  leaves: Demande[];
-  addLeave: (leave: Demande) => void;
-  updateLeave: (leave: Demande) => void;
+  demandes: Demande[];
+  loading: boolean;
+  fetchDemandes: () => Promise<void>;
+  addDemande: (data: {
+    employe_id: number;
+    type: string;
+    start_date: string;
+    end_date: string;
+    reason: string;
+  }) => Promise<void>;
+  updateDemande: (id: number, status: Status, comment: string) => Promise<void>;
 };
 
 const DataContext = createContext<DataContextType | null>(null);
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const [leaves, setLeaves] = useLocalStorage<Demande[]>("leaves", []);
+  const { currentUser } = useUser();
+  const [demandes, setDemandes] = useState<Demande[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const addLeave = (leave: Demande) => {
-    setLeaves([...leaves, leave]);
+  const fetchDemandes = async () => {
+    if (!currentUser) return;
+    setLoading(true);
+    try {
+      if (currentUser.role === "Responsable") {
+        const equipe = encodeURIComponent(currentUser.equipe);
+        const data = await apiGet<Demande[]>(`/demandes?equipe=${equipe}`);
+        setDemandes(data);
+      } else {
+        const data = await apiGet<Demande[]>(
+          `/demandes/employe/${currentUser.id}`
+        );
+        setDemandes(data);
+      }
+    } catch (err) {
+      console.error("Erreur chargement demandes :", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const updateLeave = (updatedLeave: Demande) => {
-    setLeaves(
-      leaves.map((l) => (l.id === updatedLeave.id ? updatedLeave : l))
-    );
+  useEffect(() => {
+    fetchDemandes();
+  }, [currentUser?.id]);
+
+  const addDemande = async (data: {
+    employe_id: number;
+    type: string;
+    start_date: string;
+    end_date: string;
+    reason: string;
+  }) => {
+    await apiPost("/demandes", data);
+    await fetchDemandes();
+  };
+
+  const updateDemande = async (
+    id: number,
+    status: Status,
+    comment: string
+  ) => {
+    await apiPatch(`/demandes/${id}`, { status, comment });
+    await fetchDemandes();
   };
 
   return (
-    <DataContext.Provider value={{ leaves, addLeave, updateLeave }}>
+    <DataContext.Provider
+      value={{ demandes, loading, fetchDemandes, addDemande, updateDemande }}
+    >
       {children}
     </DataContext.Provider>
   );

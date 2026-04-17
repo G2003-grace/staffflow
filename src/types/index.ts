@@ -1,25 +1,42 @@
 export type Role = "Employe" | "Responsable";
 
-export type Utilisateur = {
+// ── Responsable ───────────────────────────────────────────
+export type Responsable = {
   id: number;
-  name: string;
-  role: Role;
+  nom: string;
+  prenom: string;
+  email: string;
   equipe: string;
+  role: "Responsable";
 };
 
+// ── Employé ───────────────────────────────────────────────
+export type Employe = {
+  id: number;
+  nom: string;
+  prenom: string;
+  equipe: string;
+  role: "Employe";
+};
+
+export type Utilisateur = Responsable | Employe;
+
+// ── Demande ───────────────────────────────────────────────
 export type Categorie = "Congés payés" | "Récupération" | "Maladie";
 
 export type Status = "en attente" | "approuvée" | "rejetée";
 
 export type Demande = {
   id: number;
-  userId: number;
-   userName: string;
+  employe_id: number;
+  employe_nom: string;
+  employe_prenom: string;
+  equipe?: string;
   type: Categorie;
-  startDate: string;
-  endDate: string;
+  start_date: string;
+  end_date: string;
   reason: string;
   status: Status;
   comment?: string;
-  createdAt: string;
+  created_at: string;
 };

@@ -1,82 +1,146 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 import { useData } from "../context/DataContext";
 import { useUser } from "../context/UserContext";
 import DemandeForm from "../components/employe/DemandeForm";
-import { motion } from "motion/react"
+import type { Employe, Status } from "../types";
 
+const STATUS_BADGE: Record<Status, string> = {
+  "en attente": "badge-warning",
+  "approuvée":  "badge-success",
+  "rejetée":    "badge-error",
+};
 
 export default function TbEnploye() {
-  const { leaves } = useData();
+  const { demandes, loading } = useData();
   const { currentUser, setCurrentUser } = useUser();
+  const [filter, setFilter] = useState<"tous" | Status>("tous");
+  const [showForm, setShowForm] = useState(false);
 
-  const [filter, setFilter] = useState<
-    "tous" | "en attente" | "approuvée" | "rejetée"
-  >("tous");
+  const employe = currentUser as Employe;
+  const isFirstVisit = !loading && demandes.length === 0;
 
-  const myLeaves = leaves.filter(
-    (leave) => leave.userId === currentUser?.id
-  );
-
-  const filteredLeaves = myLeaves.filter((leave) => {
-    if (filter === "tous") return true;
-    return leave.status === filter;
-  });
+  const filtered =
+    filter === "tous" ? demandes : demandes.filter((d) => d.status === filter);
 
   return (
-    <motion.li
-      layout
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20 }}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex items-center justify-between gap-2 p-3 rounded-lg bg-base-200"
+      className="max-w-2xl mx-auto p-6"
     >
-    <div className="p-5">
-      <h1 className="text-3xl font-bold">Employé : {currentUser?.name}</h1>
-
-     
-
-      <DemandeForm />
-
-      <h2 className="text-3xl font-bold">Mes demandes</h2>
-
-      <div className="flex  gap-3 mt-5">
-        <button onClick={() => setFilter("tous")} className="btn btn-primary">Tous</button>
-        <button onClick={() => setFilter("en attente")} className="btn btn-secondary">
-          En attente
-        </button>
-        <button onClick={() => setFilter("approuvée")} className="btn btn-success">
-          Approuvée
-        </button>
-        <button onClick={() => setFilter("rejetée")} className="btn btn-error">
-          Rejetée
+      {/* ── En-tête ── */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">
+            {employe.prenom} {employe.nom}
+          </h1>
+          <p className="text-base-content/60 text-sm">Espace employé</p>
+        </div>
+        <button
+          className="btn btn-ghost btn-sm"
+          onClick={() => setCurrentUser(null)}
+        >
+          Déconnexion
         </button>
       </div>
 
-      {filteredLeaves.map((leave) => (
-  <div key={leave.id} className="border p-2 mt-2">
+      {loading && (
+        <div className="flex justify-center py-16">
+          <span className="loading loading-spinner loading-lg" />
+        </div>
+      )}
 
-    <p>{leave.type}</p>
-<p>{leave.startDate} → {leave.endDate} </p>
-<p>{leave.status}</p>
-<p>{leave.reason}</p>
- {leave.status !== "en attente" && (
-      <p  style={{ color: "yellow" }}>Décision prise</p>
-    )}
- {leave.comment && (
-      <p className="text-blue-600 mt-2">
-         Commentaire : {leave.comment}
-      </p>
-    )}
+      {!loading && (
+        <>
+          {/* ══════════════════════════════════════════
+              PREMIÈRE VISITE — formulaire mis en avant
+          ══════════════════════════════════════════ */}
+          {isFirstVisit && (
+            <div className="card bg-base-100 shadow p-6">
+              <p className="text-base-content/60 text-sm mb-4">
+                Bienvenue ! Soumettez votre première demande ci-dessous.
+              </p>
+              <DemandeForm />
+            </div>
+          )}
 
- 
-  </div>
-))}
-<br />
- <button className="btn btn-primary" onClick={() => setCurrentUser(null)}>
-        Déconnexion
-      </button>
-    </div>
-    </motion.li>
+          {/* ══════════════════════════════════════════
+              RETOUR — demandes passées + bouton nouvelle demande
+          ══════════════════════════════════════════ */}
+          {!isFirstVisit && (
+            <>
+              {/* Bouton nouvelle demande */}
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Mes demandes</h2>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setShowForm((v) => !v)}
+                >
+                  {showForm ? "Fermer" : "+ Nouvelle demande"}
+                </button>
+              </div>
+
+              {/* Formulaire (dépliable) */}
+              {showForm && (
+                <div className="card bg-base-100 shadow p-6 mb-6">
+                  <DemandeForm onSuccess={() => setShowForm(false)} />
+                </div>
+              )}
+
+              {/* Filtres */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {(["tous", "en attente", "approuvée", "rejetée"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={`btn btn-sm ${filter === f ? "btn-primary" : "btn-ghost"}`}
+                  >
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                  </button>
+                ))}
+              </div>
+
+              {/* Liste des demandes passées */}
+              {filtered.length === 0 ? (
+                <p className="text-center text-base-content/40 py-8">
+                  Aucune demande pour ce filtre
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {filtered.map((d) => (
+                    <div
+                      key={d.id}
+                      className="card bg-base-100 shadow border border-base-300 p-4"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-semibold">{d.type}</span>
+                        <span className={`badge ${STATUS_BADGE[d.status]}`}>
+                          {d.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-base-content/60">
+                        {d.start_date} → {d.end_date}
+                      </p>
+                      {d.reason && (
+                        <p className="text-sm mt-1 italic text-base-content/70">
+                          {d.reason}
+                        </p>
+                      )}
+                      {d.comment && (
+                        <p className="text-sm mt-2 text-info font-medium">
+                          Commentaire : {d.comment}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </motion.div>
   );
 }

@@ -1,131 +1,185 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 import { useData } from "../context/DataContext";
 import { useUser } from "../context/UserContext";
 import { hasOverlap } from "../utils/leaveUtils";
-import { motion } from "motion/react"
+import type { Demande, Responsable, Status } from "../types";
 
+const STATUS_BADGE: Record<Status, string> = {
+  "en attente": "badge-warning",
+  "approuvée":  "badge-success",
+  "rejetée":    "badge-error",
+};
 
 export default function TbManager() {
-  const { leaves, updateLeave } = useData();
+  const { demandes, loading, updateDemande } = useData();
   const { currentUser, setCurrentUser } = useUser();
-const [comm, setComm] = useState<{ [key: string]: string }>({});
-const approvedLeaves = leaves.filter(
-    (l) => l.status === "approuvée"
-  );
-const hasConflict = (currentLeave: any) => {
-  return approvedLeaves.some(
-    (l) =>
-      l.userId !== currentLeave.userId &&
-      hasOverlap(
-        new Date(currentLeave.startDate),
-        new Date(currentLeave.endDate),
-        new Date(l.startDate),
-        new Date(l.endDate)
-      )
-  );
-};
-const pendingLeaves = leaves.filter(
-    (leave) => leave.status === "en attente"
-  );
 
-  const handleDecision = (
-    leave: any,
-    status: "approuvée" | "rejetée"
-  ) => {
-    updateLeave({
-      ...leave,
-      status,
-      comment: comm[leave.id] || ""
-    });
+  const [comments, setComments] = useState<Record<number, string>>({});
+  const [filter, setFilter] = useState<"tous" | Status>("en attente");
 
-    
-    setComm((prev) => ({ ...prev, [leave.id]: "" }));
+  const responsable = currentUser as Responsable;
+
+  const approvedLeaves = demandes.filter((d) => d.status === "approuvée");
+
+  const hasConflict = (d: Demande) =>
+    approvedLeaves.some(
+      (a) =>
+        a.employe_id !== d.employe_id &&
+        hasOverlap(
+          new Date(d.start_date),
+          new Date(d.end_date),
+          new Date(a.start_date),
+          new Date(a.end_date)
+        )
+    );
+
+  const handleDecision = async (d: Demande, status: "approuvée" | "rejetée") => {
+    await updateDemande(d.id, status, comments[d.id] ?? "");
+    setComments((prev) => ({ ...prev, [d.id]: "" }));
   };
 
+  const filtered =
+    filter === "tous" ? demandes : demandes.filter((d) => d.status === filter);
+
   return (
-<motion.li
-      layout
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20 }}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex items-center justify-between gap-2 p-3 rounded-lg bg-base-200"
+      className="max-w-3xl mx-auto p-6"
     >
-<div className="p-5">
-      <h1 className="text-3xl font-bold text-center">
-        Responsable : {currentUser?.name}
-      </h1>
+      {/* ── En-tête ── */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">
+            {responsable.prenom} {responsable.nom}
+          </h1>
+          <p className="text-base-content/60 text-sm">
+            Responsable de : {responsable.equipe}
+          </p>
+        </div>
+        <button
+          className="btn btn-ghost btn-sm"
+          onClick={() => setCurrentUser(null)}
+        >
+          Déconnexion
+        </button>
+      </div>
 
-      
+      {/* ── Filtres ── */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {(["tous", "en attente", "approuvée", "rejetée"] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`btn btn-sm ${filter === f ? "btn-primary" : "btn-ghost"}`}
+          >
+            {f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
+      </div>
 
-      <h2 className="text-3xl font-bold">
-        Demandes en attente
-      </h2>
-
-      {pendingLeaves.length === 0 && (
-        <p>Aucune demande</p>
+      {/* ── Chargement ── */}
+      {loading && (
+        <div className="flex justify-center py-12">
+          <span className="loading loading-spinner loading-lg" />
+        </div>
       )}
 
-      {pendingLeaves.map((leave) => {
-        const conflict = hasConflict(leave);
+      {/* ── Aucune demande ── */}
+      {!loading && filtered.length === 0 && (
+        <p className="text-center text-base-content/50 py-12">
+          Aucune demande
+        </p>
+      )}
 
-        return (
-          <div key={leave.id} className="border p-3 mt-2">
-            <p>ID Employé : {leave.userId}</p>
-            <p>{leave.type}</p>
-            <p>{leave.reason}</p>
-            <p>
-              {leave.startDate} → {leave.endDate}
-            </p>
+      {/* ── Liste des demandes ── */}
+      <div className="flex flex-col gap-4">
+        {filtered.map((d) => {
+          const conflict = hasConflict(d);
 
-            {conflict && (
-              <p style={{ color: "red" }}>
-                Conflit détecté
-              </p>
-            )}
-
-            
-            <input
-              type="text"
-              placeholder="Ajouter un commentaire"
-              className="input input-bordered w-full mt-2"
-              value={comm[leave.id] || ""}
-              onChange={(e) =>
-                setComm({
-                  ...comm,
-                  [leave.id]: e.target.value
-                })
-              }
-            />
-
-            <button
-              className="btn btn-success mt-2"
-              onClick={() =>
-                handleDecision(leave, "approuvée")
-              }
+          return (
+            <div
+              key={d.id}
+              className="card bg-base-100 shadow border border-base-300 p-5"
             >
-              Approuver
-            </button>
+              {/* Identité employé + statut */}
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <p className="font-bold text-lg">
+                    {d.employe_nom} {d.employe_prenom}
+                  </p>
+                  {d.equipe && (
+                    <p className="text-sm text-base-content/60">
+                      Équipe : {d.equipe}
+                    </p>
+                  )}
+                </div>
+                <span className={`badge ${STATUS_BADGE[d.status]}`}>
+                  {d.status}
+                </span>
+              </div>
 
-            <button
-              className="btn btn-sm btn-error btn-soft ml-4 mt-2"
-              onClick={() =>
-                handleDecision(leave, "rejetée")
-              }
-            >
-              Rejeter
-            </button>
-          </div>
-        );
-      })}
-       <br />
- <button
-        className="btn btn-primary"
-        onClick={() => setCurrentUser(null)}
-      >
-        Déconnexion
-      </button>
-    </div>
-    </motion.li>
+              {/* Détails demande */}
+              <div className="flex flex-wrap gap-4 text-sm mb-3">
+                <span className="font-medium">{d.type}</span>
+                <span className="text-base-content/70">
+                  {d.start_date} → {d.end_date}
+                </span>
+              </div>
+
+              {d.reason && (
+                <p className="text-sm italic text-base-content/70 mb-3">
+                  Motif : {d.reason}
+                </p>
+              )}
+
+              {conflict && (
+                <p className="text-error text-sm font-medium mb-3">
+                  ⚠ Conflit de dates détecté avec une autre demande approuvée
+                </p>
+              )}
+
+              {/* Commentaire déjà posé */}
+              {d.comment && d.status !== "en attente" && (
+                <p className="text-sm text-info mb-3">
+                  Commentaire : {d.comment}
+                </p>
+              )}
+
+              {/* Actions (seulement si en attente) */}
+              {d.status === "en attente" && (
+                <div className="flex flex-col gap-2 mt-2">
+                  <input
+                    type="text"
+                    placeholder="Ajouter un commentaire (optionnel)"
+                    className="input input-bordered input-sm w-full"
+                    value={comments[d.id] ?? ""}
+                    onChange={(e) =>
+                      setComments((prev) => ({ ...prev, [d.id]: e.target.value }))
+                    }
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      className="btn btn-success btn-sm"
+                      onClick={() => handleDecision(d, "approuvée")}
+                    >
+                      Approuver
+                    </button>
+                    <button
+                      className="btn btn-error btn-sm btn-soft"
+                      onClick={() => handleDecision(d, "rejetée")}
+                    >
+                      Rejeter
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
   );
 }
