@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where mysql *)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/xampp/mysql/bin/**)",
+      "Read(//c/wamp64/bin/mysql/**)",
+      "Read(//c/laragon/bin/mysql/**)",
+      "Bash(\"C:/xampp/mysql/bin/mysql.exe\" --version)",
+      "Bash(\"C:/wamp64/bin/mysql/mysql9.1.0/bin/mysql.exe\" -h 127.0.0.1 -P 3306 -u root staffflow -e \"SHOW TABLES;\")",
+      "Bash(\"C:/wamp64/bin/mysql/mysql9.1.0/bin/mysql.exe\" -h 127.0.0.1 -P 3306 -u root staffflow -e \"SHOW CREATE TABLE responsables\\\\G SHOW CREATE TABLE employes\\\\G SHOW CREATE TABLE demandes\\\\G\")",
+      "Bash(\"C:/wamp64/bin/mysql/mysql9.1.0/bin/mysql.exe\" -h nozomi.proxy.rlwy.net -P 36469 -u root \"-pDZCEShZjFzhFjJLzXMkqRgevvvtbDaMW\" -e \"DROP DATABASE IF EXISTS staffflow;\")",
+      "Bash(\"C:/wamp64/bin/mysql/mysql9.1.0/bin/mysql.exe\" -h nozomi.proxy.rlwy.net -P 36469 -u root \"-pDZCEShZjFzhFjJLzXMkqRgevvvtbDaMW\" railway)",
+      "Bash(\"C:/wamp64/bin/mysql/mysql9.1.0/bin/mysql.exe\" -h nozomi.proxy.rlwy.net -P 36469 -u root \"-pDZCEShZjFzhFjJLzXMkqRgevvvtbDaMW\" railway -e \"SHOW TABLES; SELECT COUNT\\(*\\) AS nb_responsables FROM responsables; SELECT COUNT\\(*\\) AS nb_employes FROM employes; SELECT COUNT\\(*\\) AS nb_demandes FROM demandes;\")",
+      "Bash(curl -s -w \"\\\\nHTTP: %{http_code}\\\\n\" https://staffflow-production.up.railway.app/responsables)",
+      "Bash(curl -s -w \"\\\\nHTTP: %{http_code}\\\\n\" -v https://staffflow-production.up.railway.app/responsables)",
+      "Bash(curl -s --ssl-revoke-best-effort -w \"\\\\nHTTP: %{http_code}\\\\n\" https://staffflow-production.up.railway.app/responsables)"
+    ]
+  }
+}
